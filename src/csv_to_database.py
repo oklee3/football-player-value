@@ -27,6 +27,12 @@ REQUIRED_HEADERS = {
     "Ast": "assists",
 }
 
+OPTIONAL_HEADERS = {
+    "G-PK": "non_penalty_goals",
+    "CrdY": "yellow_cards",
+    "CrdR": "red_cards",
+}
+
 
 def _parse_int(val: str):
     if val is None:
@@ -91,20 +97,17 @@ def _iter_csv_rows(path: Path) -> Iterable[Dict[str, str]]:
         except StopIteration:
             return
         # Keep header length to align with rows; FBref sometimes leaves last header empty
-        header_map = {}
+        header_map: Dict[str, List[int]] = {}
         for idx, name in enumerate(header):
             if not name:
                 continue
-            if name in header_map:
-                # Keep first occurrence (totals) and ignore later duplicates (per-90).
-                continue
-            header_map[name] = idx
+            header_map.setdefault(name, []).append(idx)
         if "Player ID" not in header_map:
             # If header ends with empty cell, treat the last column as Player ID.
             if header and header[-1] == "":
-                header_map["Player ID"] = len(header) - 1
+                header_map["Player ID"] = [len(header) - 1]
             else:
-                header_map["Player ID"] = len(header) - 1
+                header_map["Player ID"] = [len(header) - 1]
         missing = [h for h in REQUIRED_HEADERS if h not in header_map]
         if missing:
             raise ValueError(f"Missing required headers {missing} in {path}")
@@ -113,8 +116,28 @@ def _iter_csv_rows(path: Path) -> Iterable[Dict[str, str]]:
                 continue
             row_dict = {}
             for name in REQUIRED_HEADERS:
-                idx = header_map[name]
+                idx = header_map[name][0]
                 row_dict[name] = row[idx] if idx < len(row) else ""
+            # Per-90 columns are usually the second occurrence of Gls/Ast.
+            gls_idxs = header_map.get("Gls", [])
+            ast_idxs = header_map.get("Ast", [])
+            if len(gls_idxs) > 1:
+                idx = gls_idxs[1]
+                row_dict["Gls_per90"] = row[idx] if idx < len(row) else ""
+            else:
+                row_dict["Gls_per90"] = ""
+            if len(ast_idxs) > 1:
+                idx = ast_idxs[1]
+                row_dict["Ast_per90"] = row[idx] if idx < len(row) else ""
+            else:
+                row_dict["Ast_per90"] = ""
+            for name in OPTIONAL_HEADERS:
+                idxs = header_map.get(name, [])
+                if idxs:
+                    idx = idxs[0]
+                    row_dict[name] = row[idx] if idx < len(row) else ""
+                else:
+                    row_dict[name] = ""
             # FBref CSVs sometimes repeat the header row within the data.
             if (
                 row_dict.get("Player") == "Player"
@@ -156,7 +179,6 @@ def _postgrest_upsert(
         except Exception:
             pass
         raise RuntimeError(f"Supabase error {e.code}: {body or e.reason}") from e
-
 
 def main():
     parser = argparse.ArgumentParser(description="Import FBref standard_player.csv files into Supabase.")
@@ -208,6 +230,11 @@ def main():
                 "nineties": _parse_float(row["90s"]),
                 "goals": _parse_int(row["Gls"]),
                 "assists": _parse_int(row["Ast"]),
+                "non_penalty_goals": _parse_int(row.get("G-PK", "")),
+                "yellow_cards": _parse_int(row.get("CrdY", "")),
+                "red_cards": _parse_int(row.get("CrdR", "")),
+                "goals_per_90": _parse_float(row.get("Gls_per90", "")),
+                "assists_per_90": _parse_float(row.get("Ast_per90", "")),
                 "nation": _parse_nation(row["Nation"], args.nation_raw),
             }
             if not record["player_id"] or not record["season"] or not record["league"]:
