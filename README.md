@@ -1,1 +1,3 @@
-design a model for predicting player values
+football data exploration / analysis
+
+main goal: predicting transfer values
