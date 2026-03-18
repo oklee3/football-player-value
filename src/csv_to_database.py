@@ -115,6 +115,13 @@ def _iter_csv_rows(path: Path) -> Iterable[Dict[str, str]]:
             for name in REQUIRED_HEADERS:
                 idx = header_map[name]
                 row_dict[name] = row[idx] if idx < len(row) else ""
+            # FBref CSVs sometimes repeat the header row within the data.
+            if (
+                row_dict.get("Player") == "Player"
+                or row_dict.get("Player ID") == "Player ID"
+                or row_dict.get("Gls") == "Gls"
+            ):
+                continue
             yield row_dict
 
 
