@@ -16,18 +16,18 @@ def get_fbref_players_last_3(league):
         key=lambda k: int(k.split("-")[0]),  # sort by start year
         reverse=True
     )[:3]
-    season = last_3_seasons[2]
 
-    stats_dict = fb.scrape_all_stats(season, league)
+    for season in last_3_seasons:
+        stats_dict = fb.scrape_all_stats(season, league)
 
-    safe_league = league.replace(" ", "_")
-    out_dir = os.path.join("fbref_stats_csv", f"{safe_league}_{season}")
-    os.makedirs(out_dir, exist_ok=True)
-    for category, cat_dict in stats_dict.items():
-        df = cat_dict.get("player")
-        if isinstance(df, pd.DataFrame) and not df.empty:
-            df.to_csv(os.path.join(out_dir, f"{category}_player.csv"), index=False)
-            print(f"Saved {category}_player.csv with {len(df)} rows")
+        safe_league = league.replace(" ", "_")
+        out_dir = os.path.join("fbref_player_stats_csv", f"{safe_league}_{season}")
+        os.makedirs(out_dir, exist_ok=True)
+        for category, cat_dict in stats_dict.items():
+            df = cat_dict.get("player")
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                df.to_csv(os.path.join(out_dir, f"{category}_player.csv"), index=False)
+                print(f"Saved {category}_player.csv with {len(df)} rows")
 
 
 league = "England Premier League"
