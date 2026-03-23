@@ -94,6 +94,7 @@ h1 {
 
 .stat .value {
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .panel {
@@ -180,17 +181,17 @@ h2 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 18px;
 }
 
 .card {
   border: 2px solid var(--line);
   border-radius: 6px;
-  padding: 16px 14px;
+  padding: 18px 16px;
   background: #fffdf8;
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .card-top {
@@ -205,10 +206,19 @@ h2 {
   font-size: 1.1rem;
 }
 
+.rank {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .meta {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .badge {
@@ -226,12 +236,22 @@ h2 {
   margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
+  line-height: 1.5;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(29, 27, 22, 0.18);
 }
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.stats > div {
+  padding: 10px 12px;
+  border: 1px solid rgba(29, 27, 22, 0.18);
+  border-radius: 6px;
+  background: rgba(236, 231, 220, 0.35);
 }
 
 .stats .stat-label {
@@ -245,6 +265,30 @@ h2 {
 .stats .stat-value {
   font-size: 1.05rem;
   font-weight: 600;
+  line-height: 1.35;
+}
+
+.card-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  padding-top: 2px;
+}
+
+.card-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.card-note-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 @media (max-width: 900px) {
   .hero {
@@ -267,5 +311,9 @@ h2 {
 
   .stats {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .card-meta-grid {
+    grid-template-columns: 1fr;
   }
 }

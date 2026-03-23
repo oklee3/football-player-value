@@ -1,5 +1,6 @@
 import './style.css'
 import { supabase } from './supabaseClient.js'
+import { aggregatePlayerProfiles } from './transferValue.js'
 
 const app = document.querySelector('#app')
 
@@ -7,9 +8,9 @@ app.innerHTML = `
   <main class="page">
     <header class="hero">
       <div>
-        <p class="eyebrow">Supabase + FBref</p>
-        <h1>Player Snapshot</h1>
-        <p class="subtitle">Basic season stats ranked by goals + assists.</p>
+        <p class="eyebrow">oklee3</p>
+        <h1>Transfer Value Rankings</h1>
+        <p class="subtitle">A basic transfer value score using aggregated goals, assists, and age across the seasons you have collected.</p>
       </div>
       <div class="hero-card">
         <div class="stat">
@@ -18,15 +19,15 @@ app.innerHTML = `
         </div>
         <div class="stat">
           <span class="label">Metric</span>
-          <span class="value">Goals + Assists</span>
+          <span class="value">tyreek's transfer value</span>
         </div>
       </div>
     </header>
 
     <section class="panel">
       <div class="panel-header">
-        <h2>Top Contributors</h2>
-        <p class="muted">Sorted by goals + assists for your filters.</p>
+        <h2>Highest Value Players</h2>
+        <p class="muted">Ranked by an aggregated transfer value score for your filters.</p>
       </div>
       <div class="filters">
         <label class="filter">
@@ -61,10 +62,19 @@ const playerFilterEl = document.querySelector('#playerFilter')
 const applyFiltersEl = document.querySelector('#applyFilters')
 
 const FETCH_BATCH = 1000
+const MAX_RESULTS = 24
 
 const formatNum = (value) => {
   if (value === null || value === undefined) return '—'
   return new Intl.NumberFormat('en-US').format(value)
+}
+
+const formatScore = (value) => {
+  if (value === null || value === undefined) return '—'
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(value)
 }
 
 const uniqueSorted = (items) => {
@@ -102,20 +112,24 @@ const loadFilters = async () => {
 
 const renderPlayers = (players) => {
   gridEl.innerHTML = players
-    .map((player) => {
+    .map((player, index) => {
       const goals = formatNum(player.goals)
       const assists = formatNum(player.assists)
       const minutes = formatNum(player.minutes)
       const total = formatNum(player.goals_plus_assists)
+      const age = formatNum(player.age)
+      const transferValue = formatScore(player.transfer_value)
       const nation = player.nation || '—'
-      const squad = player.squad || '—'
-      const season = player.season || '—'
-      const league = player.league || '—'
+      const squad = player.squad_label || '—'
+      const season = player.season_label || '—'
+      const league = player.league_label || '—'
+      const seasonsCovered = formatNum(player.season_count)
 
       return `
         <article class="card">
           <div class="card-top">
             <div>
+              <p class="rank">#${index + 1}</p>
               <h3>${player.player}</h3>
               <p class="meta">${nation} · ${squad}</p>
             </div>
@@ -124,21 +138,27 @@ const renderPlayers = (players) => {
           <p class="league">${league}</p>
           <div class="stats">
             <div>
-              <span class="stat-label">Goals + Assists</span>
+              <span class="stat-label">Value</span>
+              <span class="stat-value">${transferValue}</span>
+            </div>
+            <div>
+              <span class="stat-label">Age</span>
+              <span class="stat-value">${age}</span>
+            </div>
+            <div>
+              <span class="stat-label">G+A</span>
               <span class="stat-value">${total}</span>
             </div>
             <div>
-              <span class="stat-label">Goals</span>
-              <span class="stat-value">${goals}</span>
+              <span class="stat-label">Gls / Ast</span>
+              <span class="stat-value">${goals} / ${assists}</span>
             </div>
-            <div>
-              <span class="stat-label">Assists</span>
-              <span class="stat-value">${assists}</span>
-            </div>
-            <div>
-              <span class="stat-label">Minutes</span>
-              <span class="stat-value">${minutes}</span>
-            </div>
+          </div>
+          <div class="card-meta-grid">
+            <p class="card-note"><span class="card-note-label">Seasons</span>${seasonsCovered}</p>
+            <p class="card-note"><span class="card-note-label">Range</span>${season}</p>
+            <p class="card-note"><span class="card-note-label">Clubs</span>${squad}</p>
+            <p class="card-note"><span class="card-note-label">Minutes</span>${minutes}</p>
           </div>
         </article>
       `
@@ -153,7 +173,7 @@ const fetchAllPlayers = async ({ league, season, player }) => {
   while (true) {
     let query = supabase
       .from('player_seasons')
-      .select('player, nation, squad, season, league, goals, assists, minutes')
+      .select('player_id, player, nation, squad, season, league, goals, assists, age, minutes')
       .neq('player', 'Player')
       .range(from, from + FETCH_BATCH - 1)
 
@@ -197,17 +217,14 @@ const loadPlayers = async () => {
     return
   }
 
-  const scored = data
-    .map((player) => {
-      const goals = player.goals || 0
-      const assists = player.assists || 0
-      return {
-        ...player,
-        goals_plus_assists: goals + assists
+  const scored = aggregatePlayerProfiles(data)
+    .sort((a, b) => {
+      if (b.transfer_value !== a.transfer_value) {
+        return b.transfer_value - a.transfer_value
       }
+      return b.goals_plus_assists - a.goals_plus_assists
     })
-    .sort((a, b) => b.goals_plus_assists - a.goals_plus_assists)
-    .slice(0, 12)
+    .slice(0, MAX_RESULTS)
 
   stateEl.textContent = ''
   renderPlayers(scored)
